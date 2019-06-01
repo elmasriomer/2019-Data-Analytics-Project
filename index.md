@@ -1,7 +1,7 @@
 # TRIAL
 
 ## DATACAMP R COURSES
-#### ([Introduction to R](https://elmasriomer.github.io/2019/Datacamp%20Course%20Solutions/Introduction_to_R.html)) 
+#### [Introduction to R](https://elmasriomer.github.io/2019/Datacamp%20Course%20Solutions/Introduction_to_R.html)
 
 ## PROJECT MARKETING ANALYTICS
 #### Decision Tree and Logistic Regression
