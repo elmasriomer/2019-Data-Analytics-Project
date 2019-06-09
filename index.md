@@ -11,4 +11,4 @@
 ([Link](https://elmasriomer.github.io/2019/clustering_samples/ProjectMA_BugsBunny.html)) 
 
 ## Python Code Exercises
-([Link](https://elmasriomer.github.io/2019/Python_Exercises/Pearson%20Programming%20Lab.py%20(1).ipynb)) 
+([Link](https://elmasriomer.github.io/2019/Python_Exercises/Pearson Programming Lab.py.html)) 
