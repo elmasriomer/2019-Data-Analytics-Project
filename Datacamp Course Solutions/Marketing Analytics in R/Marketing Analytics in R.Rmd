@@ -1,0 +1,656 @@
+---
+title: "Marketing Analytics in R"
+author: "Omer Elmasri"
+date: "04 07 2019"
+---
+
+# MARKETING ANALYTICS IN R : STATISTICAL MODELING
+
+## 1. CUSTOMER LIFETIME VALUE IN CRM
+
+Customer Lifetime Value (CLV)
+* predicted future net-profit
+* identify promising customers
+* prioritize customers according to future margins
+* no further customer segmentation
+** Identification of promising customers
+** Minimization of acquisition costs by specific targeting of customers
+** Efficient organization of CRM by prioritizing customers
+** not for Sending customized ads to special segments of customers
+
+
+```{r}
+library(readr)
+clvData1 <- read_csv("C:/Users/USER/Desktop/capstone-tm/Marketing/Datacamp-datasets/clvData1.csv")
+View(clvData1)
+```
+
+```{r}
+str(clvData1, give.attr = FALSE)
+```
+
+```{r}
+library(corrplot)
+library(dplyr)
+clvData1 %>% 
+  select(nOrders, nItems, daysSinceLastOrder, returnRatio, shareOwnBrand, shareVoucher, shareSale, age, marginPerOrder, marginPerItem, itemsPerOrder, margin, futureMargin) %>% cor() %>% corrplot()
+
+
+```
+
+There are positive correlation between the margin and nOrders and nItems. Contrastly, daysSinceLastOrder and returnRatio moderately have negative correlation with future margin.
+
+## Looking at data
+The dataset salesData is loaded in the workspace. It contains information on customers for the months one to three. Only the sales of month four are included. The following table gives a description of some of the variables whose meaning is less obvious.
+
+Variable	Description
+id	- identification number of customer
+mostFreqStore	- store person bought mostly from
+mostFreqCat	-   category person purchased mostly
+nCats	- number of different categories
+preferredBrand	- brand person purchased mostly
+nBrands	- number of different brands
+
+The packages readr, dplyr, corrplot, and ggplot2 have been installed and loaded.
+
+Now visualize the correlation of the continuous explanatory variables for the past three months with the sales variable of this month. 
+
+```{r}
+library(readr)
+salesData <- read_csv("C:/Users/USER/Desktop/capstone-tm/Marketing/Datacamp-datasets/salesData.csv")
+View(salesData)
+```
+
+```{r}
+# Structure of dataset
+str(salesData, give.attr = FALSE)
+
+# Visualization of correlations
+salesData %>% select_if(is.numeric) %>%
+  select(-id) %>%
+  cor() %>% 
+  corrplot()
+
+library(ggplot2)
+# Frequent stores
+ggplot(salesData) +
+    geom_boxplot(aes(x = mostFreqStore, y = salesThisMon))
+  
+# Preferred brand
+ggplot(salesData) +
+    geom_boxplot(aes(x = preferredBrand, y = salesThisMon))
+```
+
+Which variables are probably well suited to explain the sales of this month? Got an idea? Let's move on to the simple linear regression.
+
+## SIMPLE LINEAR REGRESSION
+
+```{r}
+simpleLM <- lm(futureMargin ~ margin, data = clvData1)
+summary(simpleLM)
+```
+
+```{r}
+ggplot(clvData1, aes(margin, futureMargin)) +
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE) +
+  xlab("Margin year 1") +
+  ylab("Margin year 2")
+```
+
+Assumptions of Simple Linear Regression Model
+* Linear relationship between x and y
+* No measurement error in x (weak exogeneity)
+* Independence of errors
+* Expectation of errors is 0
+* Constant variance of prediction errors (homoscedasticity)
+* Normality of errors
+
+A well-established method to check the violation of these assumptions is a plot of the predicted values against the estimated residuals: RESIDUAL PLOT
+The residuals are the differences between the predicted and the actual values
+The residuals are also called prediction errors
+The residuals in a linear model should be uncorrelated
+
+## Estimating simple linear regression
+Back to our sales dataset, salesData, which is already loaded in the workspace. We saw that the sales in the last three months are strongly positively correlated with the sales in this month. Hence we will start off including that as an explanatory variable in a linear regression.
+
+Look at the regression coefficient. Is there a positive or negative relationship between the two variables?
+
+About how much of the variation in the sales in this month can be explained by the sales of the previous three months?
+
+```{r}
+# Model specification using lm
+salesSimpleModel <- lm(salesThisMon ~ salesLast3Mon, 
+                        data = salesData)
+
+# Looking at model summary
+summary(salesSimpleModel)
+
+```
+
+Since the regression coefficient is greater than 0, there exists a positive relationship between the explanatory variable salesLast3Mon and the dependent variable salesThisMon. It explains almost 60 percent of the variation in the sales of this month.
+
+## MULTIPLE LINEAR REGRESSION
+
+```{r}
+multipleLM <- lm(futureMargin ~ margin + nOrders + nItems + daysSinceLastOrder +
+                    returnRatio + shareOwnBrand + shareVoucher + shareSale + 
+                    gender + age + marginPerOrder + marginPerItem + 
+                    itemsPerOrder, data = clvData1)
+summary(multipleLM)
+```
+
+Multicolineraty is one of the treat to a multiple linear regression. 
+Regression coefficents become unstable.
+Standard errors by the linear model are underestimates.
+Due to high correlation between nOrders and nItems as well as marginPerOrder and marginPerItem. These are candidates for the multicolineraty. 
+
+In order to check multicolineraty systematically, we use Variance Inflation Factor (VIF) from rms package.  
+
+```{r}
+library(rms)
+vif(multipleLM)
+```
+
+These indicate the increase in the variance of an estimated coefficient due to multicollinearity.
+A VIF higher than 5 is problematic and values above 10 indicate poor regression estimates. 
+As expected, the vIF's  for nOrders and nItems as well as marginPerOrder and marginPerItem are rather high. 
+Hence we exclude one of each pair from the regression; namely nItems and marginPerOrder. 
+
+```{r}
+multipleLM2 <- lm(futureMargin ~ margin + nOrders + 
+                    daysSinceLastOrder + returnRatio + shareOwnBrand + 
+                    shareVoucher + shareSale + gender + age + 
+                    marginPerItem + itemsPerOrder, 
+                  data = clvData1)
+
+vif(multipleLM2)
+```
+
+Now all of them are acceptable. 
+
+```{r}
+summary(multipleLM2)
+```
+Let's look significant of the coefficients. If the p value last column is smallet than 0,05, we can conclude the coefficient the coefficient is significantly different from 0 at the point 0,05 significance level. 
+
+In this example all variables except gender, age and the itemsPerOrder are significant at the 95% confidence level. 
+
+##╦ Avoiding multicollinearity
+Back to our sales dataset salesData. Additionally, the package rms is loaded.
+
+Let's estimate a multiple linear regression! Of course, we want to make use of all variables there are in the dataset.
+
+```{r}
+# Estimating the full model
+salesModel1 <- lm(salesThisMon ~ . - id, 
+                 data = salesData)
+
+# Checking variance inflation factors
+vif(salesModel1)
+
+```
+
+```{r}
+# Estimating new model by removing information on brand
+salesModel2 <- lm(salesThisMon ~ . - id - preferredBrand - nBrands, data = salesData)
+
+# Checking variance inflation factors
+vif(salesModel2)
+```
+
+Since none of the variance inflation factors is greater than 10 we can certainly accept the second model. So lets's move on to the interpretation of the coefficients.
+
+## Model validation, model fit, and prediction
+
+There are several goodness of fit measures used to judge a model's fit. One is the so-called coefficient od determination, or the Multiple-R-squared.
+The value of "Multiple R squared" provided the proportion of the dependent variable's variance that is explained by the regression model, adjusted for the number of 
+variables in the model. 
+F-test is a test for overall fit of the model. It tests whether or not R2 is equal to zero. That is to say, at least one regressor  (or a set of regressor) has significant explanatory power. 
+In our model, the p-value of the F-test is smallet than 0.05.Hence the hypothesis of R2 of zero is rejected. 
+
+```{r}
+summary(multipleLM2)
+```
+
+Here the model is onlt fit on the same sample data. It may cause overfitting. 
+
+There are several ways to avoid overfitting !!!!
+* AIC () from stats package
+* stepAIC() from MASS package
+* out of the sample model validation
+* cross-validation
+......
+
+AIC penalizes every additional explanatory variable, so that we can control for overfitting while developping a model. 
+When comparing two models, the AIC-minimizing model is preferred. 
+Only one AIC value will not draw any conclusion. Automatic model selection can be done using stepAIC() from the MASS package. 
+The other methods will be explained on the next work (Logistic Regression).
+
+```{r}
+AIC(multipleLM2)
+```
+
+Now we will be using the year-2 data to predict the year-3.
+
+```{r}
+library(readr)
+clvData2 <- read_csv("C:/Users/USER/Desktop/capstone-tm/Marketing/Datacamp-datasets/clvData2.csv")
+View(clvData2)
+```
+
+
+```{r}
+head(clvData2)
+```
+
+```{r}
+predMargin <- predict(multipleLM2, 
+                      newdata = clvData2)
+head(predMargin)
+```
+
+```{r}
+mean(predMargin, na.rm = TRUE)
+```
+
+
+From Learnings from the Model, we learnt:
+* to predict the future customer lifetime value
+* to use a linear regression to model a continuous variable
+* that the variables for modelling and prediction have to carry the same names
+* that the margin in one year is a good predictor for the margin in the following year
+* the longer the time since last order, the smaller the expected margin
+* characteristics like gender and age don't seem to play a role for the prediction of margin
+* etc...
+
+
+## Interpretation of model fit (hands on)
+
+A new dataset called salesData2_4 is loaded in the working space. It contains information on the customers for the months two to four. We want to use this information in order to predict the sales for month 5.
+
+```{r}
+library(readr)
+salesData2_4 <- read_csv("C:/Users/USER/Desktop/capstone-tm/Marketing/Datacamp-datasets/salesDataMon2To4.csv")
+View(salesData2_4)
+```
+
+```{r}
+# getting an overview of new data
+summary(salesData2_4)
+
+# predicting sales
+predSales5 <- predict(salesModel2, newdata = salesData2_4)
+
+# calculating mean of future sales
+mean(predSales5, na.rm = FALSE)
+
+```
+
+## Churn Prevention in Online Marketing
+
+The dataset we will be using includes around 45.000 observations of 21 variables.
+return Customer is our variable of interest.
+
+```{r}
+library(readr)
+churnData <- read_csv("C:/Users/USER/Desktop/capstone-tm/Marketing/Datacamp-datasets/churn_data.csv")
+View(churnData)
+```
+
+```{r}
+ggplot(churnData, aes(x = returnCustomer)) +
+    geom_histogram(stat = "count")
+# count refers to a bar chart.
+```
+
+The plot shows that around 9.000 customers returned to the online shop and approximately 38.000 didn't.
+Churn prevention is a measure to ensure that customers visit the online shop again.
+
+New dataset is about bank customers and will be used to predict if customers will default on their loan payments.
+
+```{r}
+library(readr)
+defaultData <- read_delim("C:/Users/USER/Desktop/capstone-tm/Marketing/Datacamp-datasets/defaultData.csv", 
+    ";", escape_double = FALSE, trim_ws = TRUE)
+View(defaultData)
+```
+
+```{r}
+# Summary of data
+summary(defaultData)
+
+```
+
+
+```{r}
+# Look at data structure
+str(defaultData)
+
+```
+```{r}
+# Analyze the balancedness of dependent variable
+ggplot(defaultData,aes(x = PaymentDefault)) +
+  geom_histogram(stat = "count")
+```
+
+
+##¬ Modeling and model selection
+
+```{r}
+head(churnData)
+```
+
+
+```{r}
+logitModelFull <- glm(returnCustomer ~ title + newsletter + websiteDesign + paymentMethod + couponDiscount + purchaseValue + giftwrapping + throughAffiliate
+
+ + shippingFees + dvd + blueray + vinyl + videogame + videogameDownload + tvEquiment + prodOthers + prodRemitted + prodSecondHand, family = binomial, churnData)
+
+summary(logitModelFull)
+```
+
+
+```{r}
+# Coefficient Interpretation
+coefsExp <- coef(logitModelFull) %>% exp() %>% round(2)
+coefsExp
+```
+
+```{r}
+# Model Selection
+library(MASS)
+
+logitModelNew <- stepAIC(logitModelFull, trace = 0)
+
+summary(logitModelNew)
+
+```
+
+
+Here important function stepAIC is iteratively compared to several other models such that variables are dropped and added based on their significance.
+The process goes on on as long as the AIC value decreases and stops when a minimum is reached. 
+
+Here there is hidden the intermediate steps with trace=0.
+
+At the end of this process, we will see a model with fewer explanatory variables and a superior AIC value.
+Values that were dropped are mostly unspesific variables like tvEquipmetn.
+Now we focus on this model however normally we should check other models, too.
+
+# Model specification and estimation
+You have seen the glm() command for running a logistic regression. glm() stands for generalized linear model and offers a whole family of regression models.
+
+Take the exercise dataset for this coding task. The data defaultData you need for this exercise is available in your environment and ready for modeling.
+
+
+Use the glm() function in order to model the probability that a customer will default on his payment by using a logistic regression. Include every explanatory variable of the dataset and specify the data that shall be used.
+Do not forget to specify the argument family.
+Then, extract the coefficients and transform them to the odds ratios.
+
+```{r}
+# Build logistic regression model
+logitModelFull <- glm(PaymentDefault ~ limitBal + sex + education + marriage +
+                   age + pay1 + pay2 + pay3 + pay4 + pay5 + pay6 + billAmt1 + 
+                   billAmt2 + billAmt3 + billAmt4 + billAmt5 + billAmt6 + payAmt1 + 
+                   payAmt2 + payAmt3 + payAmt4 + payAmt5 + payAmt6, 
+                 family = binomial, data = defaultData)
+
+# Take a look at the model
+summary(logitModelFull)
+
+# Take a look at the odds
+coefsexp <- coef(logitModelFull) %>% exp() %>% round(2)
+coefsexp
+```
+
+# Model specification
+The stepAIC() function gives back a reduced model, as you just saw in the previous video. Now you want to apply this method to the exercise dataset defaultData.
+
+The prepared dataset is available in your environment. Additionally, the MASS package is loaded and the previously built logit model logitModelFull is defined for you. Also note that we've reduced the size of the dataset as performing stepwise model selection can take a long time with larger datasets and more complex models.
+
+
+Make use of the stepAIC() function. Set trace = 0, as you do not want to get an output for the whole model selection process. Save the result to the object logitModelNew.
+Then, use the summary() function to take a look at logitModelNew. You can ignore the warning message in this case. Go ahead and see what changed. Understand the results.
+The formula is saved in an object so that you don't have to type the whole equation again when you want to use it later.
+
+```{r}
+library(MASS)
+# The old (full) model
+logitModelFull <- glm(PaymentDefault ~ limitBal + sex + education + marriage +
+                   age + pay1 + pay2 + pay3 + pay4 + pay5 + pay6 + billAmt1 + 
+                   billAmt2 + billAmt3 + billAmt4 + billAmt5 + billAmt6 + payAmt1 + 
+                   payAmt2 + payAmt3 + payAmt4 + payAmt5 + payAmt6, 
+                 family = binomial, defaultData)
+
+#Build the new model
+logitModelNew <- stepAIC(logitModelFull, trace = 0) 
+
+#Look at the model
+summary(logitModelNew) 
+
+# Save the formula of the new model (it will be needed for the out-of-sample part) 
+formulaLogit <- as.formula(summary(logitModelNew)$call)
+formulaLogit
+```
+
+# In-sample Model Fit and Thresholding 
+
+We will evaluate the model. 
+There are some pseudo R2 statistics such as McFadden, Cox&Snell, Nagelkerke.
+For these statistics, values greater than 0.2.
+We classify a model as reasonable, greater than 0.4 as good. 
+Greater than 0.5 is very good.
+
+Shortly,
+Reasonable if >0.2
+good >0.4
+Very good >0.5
+
+The logRegR2() function from descr package gives us several goodnes of fit measures all of which tells us that the explanatory powe is poor.
+
+
+```{r}
+library(descr)
+
+LogRegR2(logitModelNew)
+
+```
+
+The algorithm seems to have trouble in explaining a big portion of the variance.
+Do not forget the phrase: "Garbage in garbage out"
+It means that a model can only be as good as the data you have.
+
+# Predict Probabilities
+Another goodnes of fit measures is called accuracy.
+
+```{r}
+library(SDMTools)
+# churnData$predNew <- predict(logitModelNew, type = "response", na.action = na.exclude)
+# data %>% select(returnCustomer, predNew) %>% tail()
+```
+
+# Confusion Matrix
+
+```{r}
+# confMatrixNew <- confusion.matrix(churnData$returnCustomer, churnData$predNew, threshold = 0.5)
+# confMatrixNew
+```
+
+# Accuracy
+```{r}
+# accuracyNew <- sum(diag(confMatrixNew)) / sum(confMatrixNew)
+# accuracyNew
+```
+
+# Finding the Optimal Threshold
+Do not trust only high accuracies. The misclassifcation ones cost higher. We need the optimal threshold.
+Like: payoff= 5*truenegative - 15*falsenegative
+The payoff is dependent on  the true-positives and false-negatives.
+#### cHECK DATACAMP VIDES AGAIN FOR DETAILS.
+
+BE CAREFULL WİTH OVERFITTING ISSUE.
+
+# In-sample fit full model
+It is coding time again, which means coming back to the exercise dataset defaultData.
+
+You now want to know how your model performs by calculating the accuracy. In order to do so, you first need a confusion matrix.
+
+Take the logitModelFull, first. The model is already specified and lives in your environment.
+
+
+Use predict() to receive a probability of each customer defaulting on their payment.
+In order to construct the confusion matrix use the function confusion.matrix() from SDMTools.
+Choose a common threshold of 0.5.
+Calculate the accuracy using the confusion matrix.
+
+```{r}
+# Make predictions using the full Model
+defaultData$predFull <- predict(logitModelFull, type = "response", na.action = na.exclude)
+
+# Construct the in-sample confusion matrix
+confMatrixModelFull <- confusion.matrix(defaultData$PaymentDefault, defaultData$predFull, threshold = 0.5)
+confMatrixModelFull
+
+# Calculate the accuracy for the full Model
+accuracyFull <- sum(diag(confMatrixModelFull)) / sum(confMatrixModelFull)
+accuracyFull
+```
+
+# In-sample fit restricted model
+You calculated the accuracy for logitModelFull. It's very important to do that with all your model candidates.
+
+Therefore,logitModelNew is specified and lives in your environment.
+
+When comparing the values of the different models with each other: In case different models have the same accuracy values, always choose the model with less explanatory variables.
+
+
+Do the same steps as in the previous exercise for the new model.
+Use predict() to receive a probability for each customer to default his payment.
+Then calculate a confusion matrix with the same threshold of 0.5 for classification.
+Calculate the accuracy of the restricted model and compare it to the accuracy od the full model. You will continue your analysis only with the superior model.
+
+```{r}
+# Calculate the accuracy for 'logitModelNew'
+# Make prediction
+defaultData$predNew <- predict(logitModelNew, type = "response", na.action = na.exclude)
+
+# Construct the in-sample confusion matrix
+confMatrixModelNew <- confusion.matrix(defaultData$PaymentDefault, defaultData$predNew, threshold = 0.5)
+confMatrixModelNew
+
+# Calculate the accuracy...
+accuracyNew <- sum(diag(confMatrixModelNew)) / sum(confMatrixModelNew)
+accuracyNew
+
+# and compare it to the full model's accuracy
+accuracyFull
+```
+
+We calculated the accuracy measures for both model candidates. As the accuracy values are approximately the same, let's continue with the smaller model logitModelNew.
+
+# Finding the optimal threshold
+Imagine you are running a campaign with the aim of preventing customers to default. You can lay out your campaign with the help of your predictions. Thereby, the choice of the threshold is essential for your results. If you know the costs and the rewards of your campaign, you can empirically check which threshold is most reasonable.
+
+We specified the dataframe payoffMatrix for you that contains the column threshold with the thresholds 0.1,0.2,...,0.5. Additionally, it contains an empty column payoff. From the last exercise we know that the restricted model was the best one. So only calculate the optimal threshold for that model. The predictions are stored in the column predNew of the defaultData dataframe.
+
+Don't be scared of all that code. Just move along line by line.
+
+
+Build a for loop over the elements of the threshold sequence, which constructs a confusion matrix for each respective threshold value. Use the SDMTools package.
+In the next step inside the loop calculate the payoff according to the following instructions and store it in the payoff column of the payoffMatrix.
+The payoff is calculated according to the specific costs given in the following scenario: If a customer does not default due to our campaign, i.e. if we predicted the default truly we are rewarded with 1000€. If however we aim our campaign at a customer who would not have defaulted anyways, i.e. if we falsely predicted the customer to default, we are faced with costs of 250€. This leads to the formula below:
+
+payoff = 1000€ * true positives - 250€ * false positives
+
+Remember the threshold that leads to the highest payoff.
+
+```{r}
+library(SDMTools)
+# Prepare data frame with threshold values and empty payoff column
+payoffMatrix <- data.frame(threshold = seq(from = 0.1, to = 0.5, by = 0.1),
+                           payoff = NA) 
+payoffMatrix 
+ 
+for(i in 1:length(payoffMatrix$threshold)) {
+  # Calculate confusion matrix with varying threshold
+  confMatrix <- confusion.matrix(defaultData$PaymentDefault,
+                defaultData$predNew, 
+                threshold = payoffMatrix$threshold[i])
+  # Calculate payoff and save it to the corresponding row
+  payoffMatrix$payoff[i] <- confMatrix[2,2]*1000 + confMatrix[2,1]*(-250)
+}
+payoffMatrix
+```
+
+We could see that the optimal threshold is 0.3.
+
+# Out-of-sample validation and cross validation
+
+```{r}
+# Generating random index for training and test set
+# set.seed ensures reproducibility of random components
+set.seed(534381)
+
+churnData$isTrain <- rbinom(nrow(churnData), 1, 0.66)
+train <- subset(churnData, churnData$isTrain == 1)
+test <- subset(churnData, churnData$isTrain == 0)
+```
+
+```{r}
+# Modeling logitTrainNew
+logitTrainNew <- glm( returnCustomer ~ title + newsletter + websiteDesign +
+        paymentMethod + couponDiscount + purchaseValue + throughAffiliate +
+        shippingFees + dvd + blueray + vinyl + videogameDownload +
+        prodOthers + prodRemitted, family = binomial, data = train)
+
+# Out-of-sample prediction for logitTrainNew
+test$predNew <- predict(logitTrainNew, type = "response", newdata = test)
+```
+
+# Out-of-Sample Accuracy
+```{r}
+#calculating the confusion matrix
+confMatrixNew <- confusion.matrix(test$returnCustomer, test$predNew, 
+                 threshold = 0.3)
+confMatrixNew
+
+#calculating the accuracy 
+accuracyNew <- sum(diag(confMatrixNew)) / sum(confMatrixNew)
+accuracyNew
+```
+
+
+# Cross-Validation: Set-up
+
+Cross-validation is an even better tool for preventing overfitting since it needs less data than out-of-sample validation.
+
+# Cross-Validation: Accuracy
+
+library(boot)
+# Accuracy function with threshold = 0.3
+Acc03 <- function(r, pi = 0) {
+  cm <- confusion.matrix(r, pi, threshold = 0.3)
+  acc <- sum(diag(cm)) / sum(cm)
+  return(acc)
+}
+
+# Accuracy
+set.seed(534381)
+cv.glm(churnData, logitModelNew, cost = Acc03, K = 6)$delta
+```{r}
+
+```
+
+glm function from the boot package allows us to implement cross-validation for linear models.
+
+The model evaulation does not stop here. Then we can improve it as changing variables as adding and removing them. 
+
+# Assessing out-of-sample model fit
+
+
+
+
+
+
+
+
