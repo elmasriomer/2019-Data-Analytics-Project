@@ -5,7 +5,7 @@
 
 ### PROJECT MARKETING ANALYTICS
 ##### [Decision Tree and Logistic Regression](https://elmasriomer.github.io/2019-Data-Analytics-Project/ProjectMA_BugsBunny.html) 
-##### [CLUSTERING SAMPLES](https://elmasriomer.github.io/2019-Data-Analytics-Project/clustering_samples/ProjectMA_BugsBunny.html)
+##### [Clustering Samples](https://elmasriomer.github.io/2019-Data-Analytics-Project/clustering_samples/ProjectMA_BugsBunny.html)
 
 ### INTRODUCTION to COMPUTER PROGRAMMING
 #### [PYTHON CODE EXERCISES](https://elmasriomer.github.io/2019-Data-Analytics-Project/Python_Exercises/Pearson Programming Lab.py.html) 
