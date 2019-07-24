@@ -2,6 +2,8 @@
 
 #### DATACAMP R COURSE SOLUTIONS
 ##### [Introduction to R](https://elmasriomer.github.io/2019-Data-Analytics-Project/Datacamp%20Course%20Solutions/Introduction_to_R.html)
+##### [Marketing Analytics in R](https://elmasriomer.github.io/2019-Data-Analytics-Project/Datacamp%20Course%20Solutions/Marketing_Analytics_in_R.html)
+
 
 #### PROJECT MARKETING ANALYTICS
 ##### [Decision Tree and Logistic Regression](https://elmasriomer.github.io/2019-Data-Analytics-Project/ProjectMA_BugsBunny.html) 
